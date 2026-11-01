@@ -1,6 +1,8 @@
 import numpy as np
 import random
 from enum import Enum
+from numba import njit
+import time
 
 class Tetris:
     def __init__ (self, config):
@@ -12,6 +14,7 @@ class Tetris:
         self.s = np.array([[0, 0, 0, 0], [0, 1, 1, 0], [1, 1, 0, 0], [0, 0, 0, 0]])
         self.c = np.array([[0, 0, 0, 0], [0, 1, 1, 0], [0, 1, 1, 0], [0, 0, 0, 0]])
         self.config = config
+        self.clock = 0
         self.board = np.zeros((20, 10))
         self.sprite = self.t
         self.currentPiece = 3
@@ -42,28 +45,14 @@ class Tetris:
                     self.spriteOnGround()
 
             case Direction.LEFT:
-                allowMoveLeft = True
-                for y in range(0, len(self.sprite)):
-                    for x in range(0, len(self.sprite[y])):
-                        if self.sprite[y][x] != 0:
-                            if 0 > self.x+x-1 or (self.board[y+self.y][x+self.x - 1] != 0 and y+self.y >= 20):
-                                allowMoveLeft = False
-                if allowMoveLeft:
-                    self.x -= 1
+                self.x = moveLeft(self.sprite, self.x, self.y, self.board)
 
             case Direction.RIGHT:
-                allowMoveRight = True
-                for y in range(0, len(self.sprite)):
-                    for x in range(0, len(self.sprite[y])):
-                        if self.sprite[y][x] != 0:
-                            if 10 <= self.x+x+1 or (self.board[y+self.y][x+self.x + 1] != 0 and y+self.y >= 20):
-                                allowMoveRight = False
-                if allowMoveRight:
-                    self.x += 1
+                self.x = moveRight(self.sprite, self.x, self.y, self.board)
 
             case Direction.ROTATE:
                 allowMoveRotate = True
-                testSprite = self.getRotated()
+                testSprite = np.rot90(self.sprite, k=-1)
                 for y in range(0, len(testSprite)):
                     for x in range(0, len(testSprite[y])):
                         if testSprite[y][x] != 0:
@@ -73,17 +62,13 @@ class Tetris:
                     self.rotation += 1
                     if self.rotation >= 4:
                         self.rotation = 0
-                    self.sprite = self.getRotated()
+                    self.sprite = np.rot90(self.sprite, k=-1)
 
             case Direction.DROP:
                 lastHeight = self.y
                 while self.y >= lastHeight:
                     lastHeight = self.y
                     self.move(Direction.DOWN)
-
-
-    def getRotated(self):
-        return np.rot90(self.sprite, k=-1)
 
 
     def spriteOnGround(self):
@@ -156,7 +141,6 @@ class Tetris:
             self.bag = [1, 2, 3, 4, 5, 6, 7]
         self.piecesPlaced += 1
 
-
     def getPieceFromIndex(self, index):
         match index:
             case 1:
@@ -194,13 +178,36 @@ class Tetris:
         output += f"[{self.x},{self.y}, piece:{self.currentPiece}, rotation:{self.rotation}, reward:{self.reward}, score:{self.score * (self.gamesToPlay - (self.losses-1))}, attempts left: {self.gamesToPlay - self.losses}]\n"
         return output
 
+@njit(cache=True)
+def moveLeft(sprite, x, y, board):
+    allowMoveLeft = True
+    for zy in range(0, len(sprite)):
+        for zx in range(0, len(sprite[zy])):
+            if sprite[zy][zx] != 0:
+                if 0 > x+zx-1 or (board[zy+y][zx+x - 1] != 0 and zy+y >= 20):
+                    allowMoveLeft = False
+    if allowMoveLeft:
+        return x-1
+    return x
+
+@njit(cache=True)
+def moveRight(sprite, x, y, board):
+    allowMoveRight = True
+    for zy in range(0, len(sprite)):
+        for zx in range(0, len(sprite[zy])):
+            if sprite[zy][zx] != 0:
+                if 10 <= x+zx+1 or (board[zy+y][zx+x + 1] != 0 and zy+y >= 20):
+                    allowMoveRight = False
+    if allowMoveRight:
+        return x+1
+    return x
+
 
 class Direction(Enum):
-    DROP = 1
+    ROTATE = 1
     DOWN = 2
     LEFT = 3
     RIGHT = 4
-    ROTATE = 5
 
 
 class Reward(Enum):
