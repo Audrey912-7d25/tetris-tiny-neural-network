@@ -7,14 +7,11 @@ from network import *
 
 class Config:
     def __init__ (self):
-        self.threads = 32
-        self.playersPerThread = 256
+        self.cpuThreads = 32
 
         self.gpuThreads = 128
-        self.PlayersPerGPUThread = 1024
-        self.numberOfGPUs = 2
 
-        self.attemptsPerPlayer = 16384
+        self.attemptsPerPlayer = 512
 
         self.networkStructure = np.array([24, 12])
         # the network is gonna be something like
@@ -26,8 +23,9 @@ class Config:
         # next 21 are y position hot-encoded
         # then the next 4 are the distances from the sprite to the next saved bit on the board for each vertical column. if no sprite bit then max val again.
         # 78 total
-        self.networkInputSize = 159
-        self.networkOutputSize = 5
+        # yeah so that is wrong now. basically it is a binary neural network and all of the values that are not just a binary 1 or 0 are encoded as five inputs for each bit of its value.
+        self.networkInputSize = 180
+        self.networkOutputSize = 4
 
         self.networkDirectoryAll = "networks/network"
         self.networkDirectoryBest = "best/best"
@@ -40,6 +38,8 @@ class Config:
 
         self.seed = random.getrandbits(32)
 
+        self.clockCyclesPerForcedFall = 3
+
 
 def main ():
     #config = Config()
@@ -48,8 +48,9 @@ def main ():
     #    tetris.move(Direction.DROP)
     #print(tetris)
     lowerbound = 0
-    upperbound = 5
+    upperbound = 32
     config = Config()
     network = NetworkCPU(config, lowerbound, upperbound)
 
-main()
+if __name__ == "__main__":
+    main()
